@@ -1,0 +1,90 @@
+class abufaliaTextStuff(ThreeDScene):
+    def construct(self):
+        axes = ThreeDAxes(x_range=[-5, 5],y_range=[-5, 5],z_range=[-5, 5])
+        self.play(Create(axes))
+        self.move_camera(theta = 30 * DEGREES, phi = 60 * DEGREES)
+        dotx, doty, dotr, dotz, dotp = Dot3D(axes.c2p(1, 0, 0), color = BLUE), Dot3D(axes.c2p(0, 1, 0), color = YELLOW), Dot3D(axes.c2p(1, 1, 0), color = GREEN), Dot3D(axes.c2p(0, 0, 1), color = RED), Dot3D(axes.c2p(1, 1, 1), color = PURPLE)
+        x = ValueTracker(1, name="x")
+        y = ValueTracker(1, name="y")
+        z = ValueTracker(1, name="z")
+        print(ORIGIN)
+        lx, ly, lz, lr, lp = Line(ORIGIN, dotx.get_center()), Line(ORIGIN, doty.get_center()), Line(ORIGIN, dotz.get_center()), Line(ORIGIN, dotx.get_center() + doty.get_center()), Line(dotr.get_center() + dotz.get_center())
+
+        ar = Angle(lx, lr, radius = 0.8, other_angle = False)
+        ar1 = Angle(lx, lr, radius = 0.8 + 5 * SMALL_BUFF, other_angle = False)
+        phiAngle = ArcBetweenPoints(start = 0.8 * lp.get_unit_vector(), end = 0.8 * lz.get_unit_vector())
+        thetaTex = MathTex(r"\theta")
+        phiTex = MathTex(r"\phi")
+        thetaTex.rotate(90 * DEGREES)
+        thetaTex.move_to(ar1.point_from_proportion(0.5))
+        phiTex.rotate(90 * DEGREES).rotate(90 * DEGREES, axis = [0, 1, 0])
+
+
+        def create_line_udpater(dot):
+            def lineupdater(mob, dt):
+                mob.become(Line(ORIGIN, dot.get_center()))
+            return lineupdater
+        
+        def create_dotUpdater(axes):
+            setters = [f"set_{axis.name}" for axis in axes]
+            def dotUpdater(dot, dt):
+                for setter, axis in zip(setters, axes):
+                    getattr(dot, setter)(axis.get_value())
+            return dotUpdater
+        
+        def create_angleUpdater(line1, line2):
+            def angleUpdater(angle, dt):
+                global ar1
+                if isinstance(angle, Angle):
+                    if dotx.get_x() >= 0:
+                        if dotr.get_y() >= 0:
+                            angle.become(Angle(line1, line2, radius = 0.8, other_angle = False))
+                            ar1 = Angle(line1, line2, radius = 0.8 + 5 * SMALL_BUFF, other_angle = False)
+                        else:
+                            angle.become(Angle(line1, line2, radius = 0.8, other_angle = True))
+                            ar1 = Angle(line1, line2, radius = 0.8 + 5 * SMALL_BUFF, other_angle = True)
+                    else:
+                        if dotr.get_y() >= 0:
+                            angle.become(Angle(line1, line2, radius = 0.8, other_angle = True))
+                            ar1 = Angle(line1, line2, radius = 0.8 + 5 * SMALL_BUFF, other_angle = True)
+                        else:
+                            angle.become(Angle(line1, line2, radius = 0.8, other_angle = False))
+                            ar1 = Angle(line1, line2, radius = 0.8 + 5 * SMALL_BUFF, other_angle = False)
+                elif isinstance(angle, ArcBetweenPoints):
+                    phiAngle.become(ArcBetweenPoints(start = 0.8 * lp.get_unit_vector(), end = 0.8 * lz.get_unit_vector(), arc_center = [0, 0, 0]))
+
+            return angleUpdater
+        def create_texUpdater(line1, line2):
+            def texUpdater(tex, dt):
+                global ar1
+                tex.move_to(ar1.point_from_proportion(0.5))
+                
+            return texUpdater
+        
+
+        
+        dotx.add_updater(create_dotUpdater([x]))
+        doty.add_updater(create_dotUpdater([y]))
+        dotz.add_updater(create_dotUpdater([z]))
+        dotr.add_updater(create_dotUpdater([x, y]))
+        dotp.add_updater(create_dotUpdater([x, y, z]))
+
+        for mob, dot in zip([lx, ly, lz, lr, lp], [dotx, doty, dotz, dotr, dotp]):
+            mob.add_updater(create_line_udpater(dot))
+
+        ar.add_updater(create_angleUpdater(lx, lr))
+        thetaTex.add_updater(create_texUpdater(lx, lr))
+        phiAngle.add_updater(create_angleUpdater(None, None))
+
+
+
+        self.add(dotx, doty, dotz, dotr, dotp, lx, ly, lz, lr, lp, ar, thetaTex, phiTex, phiAngle)
+        self.play(x.animate.set_value(3))
+        self.wait(1)
+        self.play(y.animate.set_value(3))
+        self.wait(1)
+        self.play(x.animate.set_value(-1), y.animate.set_value(2), z.animate.set_value(-3))
+        self.wait(1)
+        self.play(x.animate.set_value(2))
+        self.play(y.animate.set_value(-1), z.animate.set_value(0))
+        self.wait(2)
